@@ -1,0 +1,796 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <title>QCX v3 – Universal Encrypted Archive</title>
+  <!-- Library kompresi (zlib/DEFLATE) -->
+  <script src="https://cdn.jsdelivr.net/npm/fflate@0.8.2/umd/index.min.js"></script>
+  <style>
+    :root {
+      --bg: #050509;
+      --panel: #0b0b15;
+      --panel-soft: #10101a;
+      --border: #1f2937;
+      --accent: #2563eb;
+      --accent-soft: #1d4ed8;
+      --accent-warn: #f97316;
+      --text-main: #f9fafb;
+      --text-dim: #9ca3af;
+      --btn-sec: #4b5563;
+      --btn-sec-hover: #6b7280;
+      --radius: 14px;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      padding: 24px 12px 40px;
+      background: radial-gradient(circle at top, #111827 0, #010108 45%, #000 100%);
+      color: var(--text-main);
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    .app {
+      max-width: 1120px;
+      margin: 0 auto;
+    }
+
+    h1 {
+      margin: 0 0 4px;
+      font-size: clamp(1.8rem, 3vw, 2.4rem);
+    }
+
+    .subtitle {
+      margin: 0 0 20px;
+      color: var(--text-dim);
+      font-size: 0.95rem;
+    }
+
+    .grid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 16px;
+    }
+
+    .panel {
+      flex: 1 1 320px;
+      min-width: 0;
+      background: linear-gradient(135deg, #0b0b15, #050510);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 16px 16px 18px;
+      box-shadow: 0 18px 40px rgba(0,0,0,0.5);
+    }
+
+    .panel h2 {
+      margin: 0 0 4px;
+      font-size: 1.1rem;
+    }
+
+    .panel small {
+      color: var(--text-dim);
+      font-size: 0.8rem;
+    }
+
+    .field-label {
+      display: block;
+      margin-top: 12px;
+      font-size: 0.85rem;
+      color: var(--text-dim);
+    }
+
+    input[type="file"] {
+      margin-top: 8px;
+      font-size: 0.85rem;
+      color: var(--text-main);
+    }
+
+    input[type="password"] {
+      width: 100%;
+      margin-top: 4px;
+      padding: 8px 10px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: var(--panel-soft);
+      color: var(--text-main);
+      font-size: 0.9rem;
+      outline: none;
+    }
+
+    input[type="password"]:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 1px rgba(37,99,235,0.35);
+    }
+
+    .btn-row {
+      margin-top: 10px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    button {
+      padding: 8px 14px;
+      border-radius: 999px;
+      border: none;
+      cursor: pointer;
+      font-size: 0.85rem;
+      font-weight: 600;
+      letter-spacing: 0.02em;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: background 0.12s ease, transform 0.08s ease, box-shadow 0.12s ease;
+      white-space: nowrap;
+    }
+
+    .btn-main {
+      background: var(--accent);
+      color: #fff;
+      box-shadow: 0 6px 16px rgba(37,99,235,0.45);
+    }
+    .btn-main:hover {
+      background: var(--accent-soft);
+      transform: translateY(-1px);
+      box-shadow: 0 10px 22px rgba(37,99,235,0.6);
+    }
+
+    .btn-sec {
+      background: var(--btn-sec);
+      color: var(--text-main);
+    }
+    .btn-sec:hover {
+      background: var(--btn-sec-hover);
+      transform: translateY(-1px);
+    }
+
+    .btn-warn {
+      background: var(--accent-warn);
+      color: #111827;
+    }
+    .btn-warn:hover {
+      background: #fb923c;
+      transform: translateY(-1px);
+    }
+
+    #log, #logMulti {
+      margin-top: 10px;
+      padding: 10px;
+      background: var(--panel-soft);
+      border-radius: 10px;
+      min-height: 64px;
+      font-size: 0.78rem;
+      white-space: pre-line;
+      color: var(--text-dim);
+    }
+
+    /* ⭐ DIBENERIN: table-wrap sekarang bisa scroll */
+    .table-wrap {
+      margin-top: 10px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      max-height: 320px;
+      overflow-y: auto;
+      overflow-x: hidden;
+      display: none;
+      background: #020617;
+    }
+
+    .table-wrap::-webkit-scrollbar {
+      width: 8px;
+    }
+    .table-wrap::-webkit-scrollbar-thumb {
+      background: #374151;
+      border-radius: 4px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.78rem;
+    }
+    th, td {
+      padding: 6px 8px;
+      border-bottom: 1px solid #111827;
+      text-align: left;
+    }
+    th {
+      background: #0f172a;
+      position: sticky;
+      top: 0;
+      z-index: 1;
+    }
+    .cell-path {
+      max-width: 240px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    @media (max-width: 768px) {
+      body {
+        padding: 18px 10px 32px;
+      }
+      .panel {
+        padding: 13px 13px 15px;
+      }
+      .cell-path {
+        max-width: 160px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <h1>QCX v3 – Universal Encrypted Archive</h1>
+    <p class="subtitle">
+      Format arsip generasi baru: single file atau banyak file & folder → satu <code>.qcx</code> terenkripsi,
+      terkompres, dan bisa dipakai di browser (desktop & HP).
+    </p>
+
+    <div class="grid">
+      <!-- PANEL KIRI: SINGLE FILE -->
+      <div class="panel">
+        <h2>Mode Single File</h2>
+        <small>
+          Kompres satu file apa pun (DOCX, PDF, ZIP, video, dll) menjadi satu QCX terenkripsi,
+          atau ekstrak kembali file dari QCX.
+        </small>
+
+        <label class="field-label">Pilih file (file biasa untuk kompres, atau .qcx untuk ekstrak):</label>
+        <input type="file" id="singleInput">
+
+        <label class="field-label">Password arsip (minimal 6 karakter):</label>
+        <input type="password" id="singlePassword" placeholder="Password untuk QCX">
+
+        <div class="btn-row">
+          <button class="btn-main" id="btnSingleCompress">Kompres → .qcx</button>
+          <button class="btn-sec" id="btnSingleDecompress">Ekstrak dari .qcx</button>
+        </div>
+
+        <div id="log">Log single akan muncul di sini…</div>
+      </div>
+
+      <!-- PANEL KANAN: MULTI FILE / FOLDER -->
+      <div class="panel">
+        <h2>Mode Multi File / Folder</h2>
+        <small>
+          Kompres banyak file / seluruh folder menjadi satu QCX (dedup & kompres global),
+          bisa dilihat isinya dan diekstrak per-file atau semua sekaligus.
+        </small>
+
+        <label class="field-label">Pilih banyak file / folder:</label>
+        <input type="file" id="multiInput" multiple webkitdirectory>
+
+        <label class="field-label">Password untuk QCX baru:</label>
+        <input type="password" id="multiPassword" placeholder="Minimal 6 karakter">
+
+        <div class="btn-row">
+          <button class="btn-main" id="btnCreateMulti">Buat QCX Multi</button>
+        </div>
+
+        <hr style="border:none;border-top:1px solid var(--border);margin:14px 0;">
+
+        <label class="field-label">Buka QCX yang sudah ada:</label>
+        <input type="file" id="qcxOpenInput" accept=".qcx">
+
+        <label class="field-label">Password QCX yang akan dibuka:</label>
+        <input type="password" id="openPassword" placeholder="Password arsip">
+
+        <div class="btn-row">
+          <button class="btn-sec" id="btnOpenQcx">Buka & Lihat Isi</button>
+          <button class="btn-warn" id="btnExtractAll">Ekstrak Semua → Download</button>
+        </div>
+
+        <div id="logMulti">Log multi akan muncul di sini…</div>
+
+        <div class="table-wrap" id="tableWrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Path</th>
+                <th>Ukuran</th>
+                <th>CRC32</th>
+                <th>Aksi</th>
+              </tr>
+            </thead>
+            <tbody id="tableBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+<script>
+// ========== UTIL ==========
+
+// CRC32 buatan sendiri (tanpa fflate.crc32)
+function crc32(buf) {
+  let table = crc32.table;
+  if (!table) {
+    table = crc32.table = new Uint32Array(256);
+    for (let i = 0; i < 256; i++) {
+      let c = i;
+      for (let k = 0; k < 8; k++) {
+        c = (c & 1) ? (0xEDB88320 ^ (c >>> 1)) : (c >>> 1);
+      }
+      table[i] = c >>> 0;
+    }
+  }
+  let crc = 0 ^ (-1);
+  for (let i = 0; i < buf.length; i++) {
+    crc = (crc >>> 8) ^ table[(crc ^ buf[i]) & 0xFF];
+  }
+  return (crc ^ (-1)) >>> 0;
+}
+
+function formatSize(bytes) {
+  if (bytes < 1024) return bytes + " B";
+  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + " KB";
+  return (bytes / (1024 * 1024)).toFixed(2) + " MB";
+}
+function toHex(u8) {
+  return Array.from(u8).map(b => b.toString(16).padStart(2, "0")).join("");
+}
+function fromHex(str) {
+  if (str.length % 2 !== 0) throw new Error("Hex length invalid");
+  const out = new Uint8Array(str.length / 2);
+  for (let i = 0; i < str.length; i += 2) {
+    out[i / 2] = parseInt(str.slice(i, i + 2), 16);
+  }
+  return out;
+}
+function log(el, msg, append = true) {
+  if (append) el.textContent += "\n" + msg;
+  else el.textContent = msg;
+}
+function saveUint8AsFile(u8, name) {
+  const blob = new Blob([u8]);
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = name;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+// ========== CRYPTO: PBKDF2 + AES-GCM ==========
+
+async function deriveKey(password, salt, iterations = 200000) {
+  const enc = new TextEncoder().encode(password);
+  const baseKey = await crypto.subtle.importKey("raw", enc, "PBKDF2", false, ["deriveKey"]);
+  const key = await crypto.subtle.deriveKey(
+    {
+      name: "PBKDF2",
+      salt,
+      iterations,
+      hash: "SHA-256"
+    },
+    baseKey,
+    { name: "AES-GCM", length: 256 },
+    false,
+    ["encrypt", "decrypt"]
+  );
+  return key;
+}
+
+async function aesEncrypt(key, iv, dataUint8) {
+  const ct = await crypto.subtle.encrypt({ name: "AES-GCM", iv }, key, dataUint8);
+  return new Uint8Array(ct);
+}
+
+async function aesDecrypt(key, iv, dataUint8) {
+  const pt = await crypto.subtle.decrypt({ name: "AES-GCM", iv }, key, dataUint8);
+  return new Uint8Array(pt);
+}
+
+// ========== QCX v3 CORE (BUAT ARSIP) ==========
+//
+// files: Array<File>
+// password: string
+// logFn: function(msg, append)
+
+async function createQcxFromFiles(files, password, logFn) {
+  if (files.length === 0) throw new Error("Tidak ada file.");
+
+  // 1) Baca semua file → buffer & metadata
+  const fileObjs = [];
+  let totalOrig = 0;
+  for (const f of files) {
+    const path = f.webkitRelativePath || f.name;
+    const mime = f.type || "application/octet-stream";
+    const buf = new Uint8Array(await f.arrayBuffer());
+    const size = buf.length;
+    const crc = crc32(buf);
+    totalOrig += size;
+    fileObjs.push({ path, mime, buf, size, crc });
+    if (logFn) logFn(`+ ${path} (${formatSize(size)})`, true);
+  }
+
+  // 2) Dedup: file dengan (size+crc+isi) sama disimpan sekali
+  if (logFn) logFn("Mendeteksi file duplikat (dedup)...", true);
+  const uniqueMap = new Map(); // key → {buf, offset}
+  const filesMeta = [];
+  let uniqueTotalSize = 0;
+
+  for (const fo of fileObjs) {
+    const keyBase = fo.size + "_" + fo.crc.toString(16);
+    let entry = uniqueMap.get(keyBase);
+
+    if (entry) {
+      // cek isi bener-bener sama
+      const ubuf = entry.buf;
+      if (ubuf.length === fo.buf.length && ubuf.every((v, i) => v === fo.buf[i])) {
+        // pakai offset yang sama
+        filesMeta.push({
+          path: fo.path,
+          offset: entry.offset,
+          length: fo.size,
+          size: fo.size,
+          mime: fo.mime,
+          crc32: fo.crc.toString(16)
+        });
+        continue;
+      }
+    }
+
+    // unique baru
+    entry = {
+      buf: fo.buf,
+      offset: uniqueTotalSize
+    };
+    uniqueMap.set(keyBase + "_u" + uniqueTotalSize, entry);
+    filesMeta.push({
+      path: fo.path,
+      offset: entry.offset,
+      length: fo.size,
+      size: fo.size,
+      mime: fo.mime,
+      crc32: fo.crc.toString(16)
+    });
+    uniqueTotalSize += fo.size;
+  }
+
+  if (logFn) {
+    logFn(`Ukuran gabungan unik setelah dedup: ${formatSize(uniqueTotalSize)}`, true);
+  }
+
+  // 3) Gabungkan data unik
+  const dataConcat = new Uint8Array(uniqueTotalSize);
+  for (const entry of uniqueMap.values()) {
+    dataConcat.set(entry.buf, entry.offset);
+  }
+
+  // 4) innerHeader
+  const innerHeader = {
+    fileCount: filesMeta.length,
+    totalSize: totalOrig,
+    uniqueSize: uniqueTotalSize,
+    files: filesMeta,
+    createdAt: Date.now()
+  };
+  const innerHeaderBytes = new TextEncoder().encode(JSON.stringify(innerHeader));
+  const innerHeaderLen = innerHeaderBytes.length;
+
+  // 5) innerRaw = [4 byte len][header][dataConcat]
+  const innerRaw = new Uint8Array(4 + innerHeaderLen + dataConcat.length);
+  const dvInner = new DataView(innerRaw.buffer);
+  dvInner.setUint32(0, innerHeaderLen, true);
+  innerRaw.set(innerHeaderBytes, 4);
+  innerRaw.set(dataConcat, 4 + innerHeaderLen);
+
+  if (logFn) logFn("Kompresi inner payload dengan zlib (DEFLATE)...", true);
+  const compressed = fflate.zlibSync(innerRaw, { level: 9 });
+
+  // 6) Enkripsi AES-GCM
+  if (logFn) logFn("Menyiapkan key AES-256-GCM via PBKDF2...", true);
+  const salt = crypto.getRandomValues(new Uint8Array(16));
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const iterations = 200000;
+  const key = await deriveKey(password, salt, iterations);
+
+  if (logFn) logFn("Mengenkripsi payload terkompres...", true);
+  const ciphertext = await aesEncrypt(key, iv, compressed);
+
+  // 7) Outer header (tidak dienkripsi)
+  const outerHeader = {
+    magic: "QCX3",
+    version: 3,
+    kdf: {
+      algo: "PBKDF2",
+      hash: "SHA-256",
+      iter: iterations,
+      saltHex: toHex(salt)
+    },
+    cipher: {
+      algo: "AES-GCM",
+      ivHex: toHex(iv)
+    },
+    meta: {
+      fileCount: innerHeader.fileCount,
+      totalSize: innerHeader.totalSize,
+      note: "QCX v3 universal encrypted archive"
+    }
+  };
+  const outerHeaderBytes = new TextEncoder().encode(JSON.stringify(outerHeader));
+  const outerHeaderLen = outerHeaderBytes.length;
+
+  // 8) QCX final: [4 byte headerLen][outerHeaderJSON][ciphertext]
+  const out = new Uint8Array(4 + outerHeaderLen + ciphertext.length);
+  const dvOuter = new DataView(out.buffer);
+  dvOuter.setUint32(0, outerHeaderLen, true);
+  out.set(outerHeaderBytes, 4);
+  out.set(ciphertext, 4 + outerHeaderLen);
+
+  const ratio = 100 * (1 - out.length / innerHeader.totalSize);
+  return { qcx: out, innerHeader, ratio };
+}
+
+// ========== QCX v3 CORE (BUKA / DECRYPT) ==========
+
+async function openQcxFile(file, password, logFn) {
+  const buf = new Uint8Array(await file.arrayBuffer());
+  if (buf.length < 8) throw new Error("File terlalu kecil, bukan QCX valid.");
+
+  const dv = new DataView(buf.buffer, buf.byteOffset, buf.byteLength);
+  const outerHeaderLen = dv.getUint32(0, true);
+  if (outerHeaderLen <= 0 || outerHeaderLen > buf.length - 4) {
+    throw new Error("Outer header length tidak valid.");
+  }
+
+  const outerHeaderBytes = buf.slice(4, 4 + outerHeaderLen);
+  const outerHeaderText = new TextDecoder().decode(outerHeaderBytes);
+  const outerHeader = JSON.parse(outerHeaderText);
+
+  if (outerHeader.magic !== "QCX3" || outerHeader.version !== 3) {
+    throw new Error("Magic/versi QCX tidak cocok (bukan QCX3).");
+  }
+
+  const ciphertext = buf.slice(4 + outerHeaderLen);
+
+  if (logFn) logFn("Derivasi key dari password...", true);
+  const salt = fromHex(outerHeader.kdf.saltHex);
+  const iv = fromHex(outerHeader.cipher.ivHex);
+  const key = await deriveKey(password, salt, outerHeader.kdf.iter);
+
+  if (logFn) logFn("Mendekripsi AES-GCM...", true);
+  let compressed;
+  try {
+    compressed = await aesDecrypt(key, iv, ciphertext);
+  } catch (e) {
+    throw new Error("Password salah atau data QCX rusak (dekripsi gagal).");
+  }
+
+  if (logFn) logFn("Membuka kompresi zlib...", true);
+  const innerRaw = fflate.unzlibSync(compressed);
+
+  const dvInner = new DataView(innerRaw.buffer, innerRaw.byteOffset, innerRaw.byteLength);
+  const innerHeaderLen = dvInner.getUint32(0, true);
+  if (innerHeaderLen <= 0 || innerHeaderLen > innerRaw.length - 4) {
+    throw new Error("Inner header length tidak valid.");
+  }
+
+  const innerHeaderBytes = innerRaw.slice(4, 4 + innerHeaderLen);
+  const innerHeaderText = new TextDecoder().decode(innerHeaderBytes);
+  const innerHeader = JSON.parse(innerHeaderText);
+  const dataConcat = innerRaw.slice(4 + innerHeaderLen);
+
+  return { outerHeader, innerHeader, dataConcat };
+}
+
+// ========== UI: SINGLE MODE ==========
+
+const singleInput = document.getElementById("singleInput");
+const singlePassword = document.getElementById("singlePassword");
+const btnSingleCompress = document.getElementById("btnSingleCompress");
+const btnSingleDecompress = document.getElementById("btnSingleDecompress");
+const logSingle = document.getElementById("log");
+
+btnSingleCompress.addEventListener("click", async () => {
+  const file = singleInput.files && singleInput.files[0];
+  if (!file) {
+    alert("Pilih file dulu untuk dikompres.");
+    return;
+  }
+  const pwd = singlePassword.value || "";
+  if (pwd.length < 6) {
+    alert("Password minimal 6 karakter.");
+    return;
+  }
+
+  try {
+    log(logSingle, "Membuat QCX untuk 1 file: " + file.name, false);
+    const { qcx, innerHeader, ratio } = await createQcxFromFiles([file], pwd, (m, a) => log(logSingle, m, a));
+    const suggested = file.name + ".qcx";
+    saveUint8AsFile(qcx, suggested);
+    log(logSingle, `Selesai. QCX: ${suggested}`, true);
+    log(logSingle, `Rasio kompresi: ${ratio.toFixed(1)}%`, true);
+  } catch (err) {
+    console.error(err);
+    log(logSingle, "ERROR: " + err.message, true);
+    alert("Gagal membuat QCX: " + err.message);
+  }
+});
+
+btnSingleDecompress.addEventListener("click", async () => {
+  const file = singleInput.files && singleInput.files[0];
+  if (!file) {
+    alert("Pilih file .qcx yang akan diekstrak.");
+    return;
+  }
+  const pwd = singlePassword.value || "";
+  if (!pwd) {
+    alert("Masukkan password QCX.");
+    return;
+  }
+
+  try {
+    log(logSingle, "Membuka QCX single/multi...", false);
+    const { innerHeader, dataConcat } = await openQcxFile(file, pwd, (m, a) => log(logSingle, m, a));
+
+    if (innerHeader.fileCount === 1) {
+      // langsung ekstrak satu file
+      const f = innerHeader.files[0];
+      const slice = dataConcat.slice(f.offset, f.offset + f.length);
+      const safeName = f.path.replace(/[/\\]+/g, "_");
+      saveUint8AsFile(slice, safeName);
+      log(logSingle, "Diekstrak: " + f.path, true);
+    } else {
+      log(logSingle, "Arsip ini berisi banyak file. Gunakan panel kanan (Mode Multi) untuk melihat dan ekstrak.", true);
+      alert("QCX ini berisi banyak file. Buka di panel 'Mode Multi File / Folder'.");
+    }
+  } catch (err) {
+    console.error(err);
+    log(logSingle, "ERROR: " + err.message, true);
+    alert("Gagal ekstrak QCX: " + err.message);
+  }
+});
+
+// ========== UI: MULTI MODE ==========
+
+const multiInput = document.getElementById("multiInput");
+const multiPassword = document.getElementById("multiPassword");
+const btnCreateMulti = document.getElementById("btnCreateMulti");
+const qcxOpenInput = document.getElementById("qcxOpenInput");
+const openPassword = document.getElementById("openPassword");
+const btnOpenQcx = document.getElementById("btnOpenQcx");
+const btnExtractAll = document.getElementById("btnExtractAll");
+const logMulti = document.getElementById("logMulti");
+const tableWrap = document.getElementById("tableWrap");
+const tableBody = document.getElementById("tableBody");
+
+let currentInnerHeader = null;
+let currentDataConcat = null;
+
+btnCreateMulti.addEventListener("click", async () => {
+  const files = Array.from(multiInput.files || []);
+  if (!files.length) {
+    alert("Pilih minimal satu file/folder untuk QCX multi.");
+    return;
+  }
+  const pwd = multiPassword.value || "";
+  if (pwd.length < 6) {
+    alert("Password minimal 6 karakter.");
+    return;
+  }
+
+  try {
+    log(logMulti, `Membuat QCX multi dari ${files.length} file...`, false);
+    const { qcx, innerHeader, ratio } = await createQcxFromFiles(files, pwd, (m, a) => log(logMulti, m, a));
+    const suggested = `multi-${Date.now()}.qcx`;
+    saveUint8AsFile(qcx, suggested);
+    log(logMulti, `QCX multi siap: ${suggested}`, true);
+    log(logMulti, `Total ukuran asli: ${formatSize(innerHeader.totalSize)}`, true);
+    log(logMulti, `Rasio kompresi: ${ratio.toFixed(1)}%`, true);
+  } catch (err) {
+    console.error(err);
+    log(logMulti, "ERROR: " + err.message, true);
+    alert("Gagal membuat QCX multi: " + err.message);
+  }
+});
+
+btnOpenQcx.addEventListener("click", async () => {
+  const file = qcxOpenInput.files && qcxOpenInput.files[0];
+  if (!file) {
+    alert("Pilih QCX yang akan dibuka.");
+    return;
+  }
+  const pwd = openPassword.value || "";
+  if (!pwd) {
+    alert("Masukkan password QCX.");
+    return;
+  }
+
+  try {
+    log(logMulti, "Membuka QCX...", false);
+    const { innerHeader, dataConcat } = await openQcxFile(file, pwd, (m, a) => log(logMulti, m, a));
+    currentInnerHeader = innerHeader;
+    currentDataConcat = dataConcat;
+
+    log(logMulti, `QCX valid. Jumlah file: ${innerHeader.fileCount}`, true);
+    log(logMulti, `Total ukuran asli: ${formatSize(innerHeader.totalSize)}`, true);
+
+    // tampilkan isi di tabel
+    tableBody.innerHTML = "";
+    innerHeader.files.forEach((f, idx) => {
+      const tr = document.createElement("tr");
+
+      const tdPath = document.createElement("td");
+      tdPath.className = "cell-path";
+      tdPath.textContent = f.path;
+
+      const tdSize = document.createElement("td");
+      tdSize.textContent = formatSize(f.size);
+
+      const tdCrc = document.createElement("td");
+      tdCrc.textContent = f.crc32 || "";
+
+      const tdAct = document.createElement("td");
+      const btn = document.createElement("button");
+      btn.textContent = "Ekstrak";
+      btn.className = "btn-sec";
+      btn.dataset.index = idx;
+      tdAct.appendChild(btn);
+
+      tr.appendChild(tdPath);
+      tr.appendChild(tdSize);
+      tr.appendChild(tdCrc);
+      tr.appendChild(tdAct);
+      tableBody.appendChild(tr);
+    });
+
+    tableWrap.style.display = "block";
+    log(logMulti, "Klik 'Ekstrak' di baris tertentu atau 'Ekstrak Semua → Download'.", true);
+  } catch (err) {
+    console.error(err);
+    currentInnerHeader = null;
+    currentDataConcat = null;
+    tableWrap.style.display = "none";
+    log(logMulti, "ERROR: " + err.message, true);
+    alert("Gagal membuka QCX: " + err.message);
+  }
+});
+
+// ekstrak satu file dari tabel
+tableBody.addEventListener("click", (e) => {
+  const btn = e.target.closest("button[data.index],button[data-index]");
+  const realBtn = btn || e.target.closest("button");
+  if (!realBtn || realBtn.dataset.index === undefined) return;
+  const idx = parseInt(realBtn.dataset.index, 10);
+  if (!currentInnerHeader || !currentDataConcat) {
+    alert("Belum ada QCX yang dibuka.");
+    return;
+  }
+  const f = currentInnerHeader.files[idx];
+  const slice = currentDataConcat.slice(f.offset, f.offset + f.length);
+  const safeName = f.path.replace(/[/\\]+/g, "_");
+  saveUint8AsFile(slice, safeName);
+  log(logMulti, "Diekstrak: " + f.path, true);
+});
+
+// ekstrak semua → auto download ke Downloads
+btnExtractAll.addEventListener("click", () => {
+  if (!currentInnerHeader || !currentDataConcat) {
+    alert("Buka QCX dulu (dengan password yang benar).");
+    return;
+  }
+  const hdr = currentInnerHeader;
+  const data = currentDataConcat;
+  log(logMulti, "Ekstrak semua file (auto-download)...", true);
+
+  hdr.files.forEach(f => {
+    const slice = data.slice(f.offset, f.offset + f.length);
+    const safeName = f.path.replace(/[/\\]+/g, "_");
+    saveUint8AsFile(slice, safeName);
+  });
+
+  log(logMulti, "Selesai. Semua file sudah di-download (nama file menyimpan path asal).", true);
+});
+</script>
+</body>
+</html>
