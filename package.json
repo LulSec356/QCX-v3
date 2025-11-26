@@ -1,0 +1,23 @@
+{
+  "name": "qcx-v3",
+  "version": "3.0.0",
+  "description": "World's First Browser-Based Encrypted Archive with Deduplication & AES-256-GCM",
+  "main": "qcx-v3.js",
+  "author": "Gede Dylan Pratama Wijaya",
+  "license": "MIT",
+  "keywords": [
+    "encryption",
+    "archive",
+    "browser",
+    "deduplication",
+    "aes-256-gcm",
+    "compression",
+    "security",
+    "privacy"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/gede-dylan-pratama-wijaya/QCX-v3"
+  },
+  "homepage": "https://gede-dylan-pratama-wijaya.github.io/QCX-v3/"
+}
